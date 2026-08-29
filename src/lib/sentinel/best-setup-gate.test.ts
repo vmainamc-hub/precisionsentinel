@@ -582,7 +582,7 @@ describe("Apex Sentinel — Final Selectivity & Best-Setup Gate Mandatory Test S
         redSemantics: { mandatoryRedStructureFailed: true, mandatoryFailureReasons: ["RED losing side"] },
       } as any,
     });
-    const cleanLowScore = createTestCandidate("R_25", "UNDER_7", 71, 15, null, {
+    const cleanLowScore = createTestCandidate("1HZ25V", "UNDER_7", 71, 15, null, {
       digitPsychology: {
         score: 71,
         redSemantics: { mandatoryRedStructureFailed: false, mandatoryFailureReasons: [] },
@@ -595,11 +595,10 @@ describe("Apex Sentinel — Final Selectivity & Best-Setup Gate Mandatory Test S
       [],
     );
 
-    console.log(ranked.map((r:any)=>[r.market,r.finalDecision?.verdict]));
     const verdicts = new Set(ranked.map((r: any) => r.finalDecision?.verdict));
     expect(verdicts.size).toBe(1);
     const failedIdx = ranked.findIndex((r: any) => r.market === "R_10");
-    const cleanIdx = ranked.findIndex((r: any) => r.market === "R_25");
+    const cleanIdx = ranked.findIndex((r: any) => r.market === "1HZ25V");
     expect(cleanIdx).toBeLessThan(failedIdx);
   });
 });
