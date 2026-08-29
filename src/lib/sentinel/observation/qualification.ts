@@ -35,6 +35,14 @@ export class QualificationManager {
     if (dossier.state !== "RIPE") return null;
     if (this.active.has(dossier.cellId)) return this.active.get(dossier.cellId)!;
 
+    // Mandatory RED structure gate — checked first, and never compensable.
+    // RED on the losing side, 2ND RED on the losing side, or the winning
+    // side not gaining must block qualification outright, regardless of
+    // PsychologyScore, statistics, or any other engine's reading. See
+    // red-semantics.ts (classifyRedSemantics) for how this is computed.
+    const redSemantics = dossier.psychology?.raw?.digitPsychology?.redSemantics;
+    if (redSemantics?.mandatoryRedStructureFailed) return null;
+
     const veto = checkHardVeto(dossier);
     if (veto.vetoed) return null;
 

@@ -21,6 +21,7 @@ import { describe, expect, it } from "vitest";
 import { ObservationLayerEngine } from "./observation-layer";
 import { ContractType, OpportunityCandidate } from "../../types/sentinel";
 import { isCandidateBestSetup } from "../../hooks/useStrongSignalLock";
+import { FinalDecisionEngine } from "./final-decision";
 
 function createTestCandidate(
   market: string,
@@ -558,5 +559,46 @@ describe("Apex Sentinel — Final Selectivity & Best-Setup Gate Mandatory Test S
     expect(obs?.currentStage).not.toBe("RIPE");
     expect(obs?.qualityBand).not.toBe("OPPORTUNITY");
     expect(obs?.qualityBand).not.toBe("BEST_SETUP");
+  });
+
+  // Test 13: Hierarchical Stage 4 ranking — a structurally-failed candidate can
+  // never outrank a structurally-clean one, no matter how large the score gap.
+  it("13. mandatory RED structure outranks raw score in Stage 4 final ranking", () => {
+    const circuitBreaker = {
+      tripped: false,
+      reason: null,
+      consecutiveLosses: 0,
+      sessionDrawdownPct: 0,
+      sustainedGlobalDanger: 0,
+      cooldownUntil: null,
+    } as any;
+
+    // Both candidates are deliberately given the SAME final verdict (neither
+    // clears Stage 3, so both are WAIT) to isolate the structural tiebreak
+    // from the verdict-precedence tier above it.
+    const failedHighScore = createTestCandidate("R_10", "UNDER_7", 96, 15, null, {
+      digitPsychology: {
+        score: 96,
+        redSemantics: { mandatoryRedStructureFailed: true, mandatoryFailureReasons: ["RED losing side"] },
+      } as any,
+    });
+    const cleanLowScore = createTestCandidate("1HZ25V", "UNDER_7", 71, 15, null, {
+      digitPsychology: {
+        score: 71,
+        redSemantics: { mandatoryRedStructureFailed: false, mandatoryFailureReasons: [] },
+      } as any,
+    });
+
+    const { ranked } = FinalDecisionEngine.evaluateStage4(
+      [failedHighScore, cleanLowScore],
+      circuitBreaker,
+      [],
+    );
+
+    const verdicts = new Set(ranked.map((r: any) => r.finalDecision?.verdict));
+    expect(verdicts.size).toBe(1);
+    const failedIdx = ranked.findIndex((r: any) => r.market === "R_10");
+    const cleanIdx = ranked.findIndex((r: any) => r.market === "1HZ25V");
+    expect(cleanIdx).toBeLessThan(failedIdx);
   });
 });

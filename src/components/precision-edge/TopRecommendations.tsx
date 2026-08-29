@@ -13,8 +13,8 @@ export function TopRecommendations({ scan }: { scan: ScanState }) {
       </div>
       <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
         {items.length === 0 ? (
-          <div className="h-full grid place-items-center text-xs text-muted-foreground py-10">
-            Awaiting scan…
+          <div className="h-full grid place-items-center text-xs text-muted-foreground py-10 text-center px-4">
+            No qualified setup. Nothing is promoted until a candidate clears every gate.
           </div>
         ) : (
           items.map((r) => {

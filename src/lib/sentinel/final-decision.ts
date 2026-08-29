@@ -28,6 +28,40 @@ import { PortfolioExposureEngine } from "../risk/portfolio-exposure";
 import { CircuitBreakerEngine } from "../risk/circuit-breaker";
 
 /**
+ * Verdict precedence for the final hierarchical ranking sort. CLEARED must
+ * always rank above every HELD_* variant, which must always rank above
+ * WAIT/BLOCKED — independent of any candidate's score. Higher number wins.
+ */
+const VERDICT_PRECEDENCE: Record<FinalVerdict, number> = {
+  CLEARED: 3,
+  HELD_UNCONFIRMED_SIGNIFICANCE: 2,
+  HELD_EXPOSURE_CAP: 2,
+  HELD_CIRCUIT_BREAKER: 2,
+  WAIT: 1,
+  BLOCKED: 0,
+};
+
+/**
+ * Resolves the digit-psychology record for a Stage 4 candidate. The Stage 4
+ * candidate is generic (`T`) — it can be an ObservationDossier-shaped object
+ * (`psychology.raw.digitPsychology`), an OpportunityCandidate
+ * (`digitPsychology`), or a RankedOpportunity that carries the observation
+ * dossier alongside it. All known shapes are probed here so the hierarchical
+ * comparator below reads the same authority in every case.
+ */
+function candidateDigitPsychology(c: any): any | null {
+  return (
+    c?.psychology?.raw?.digitPsychology ??
+    c?.digitPsychology ??
+    c?.dossier?.psychology?.raw?.digitPsychology ??
+    c?.observation?.psychology?.raw?.digitPsychology ??
+    c?.intel?.digitPsychology ??
+    null
+  );
+}
+
+
+/**
  * Computes standard normal cumulative distribution approximation.
  */
 function normalCdf(z: number): number {
@@ -326,8 +360,32 @@ export class FinalDecisionEngine {
       };
     });
 
-    // Re-verify strict score sort descending
+    // Hierarchical final ranking — NOT a raw score sort. A generic score
+    // must never reorder candidates across verdicts, and must never let a
+    // structurally-failed candidate outrank a structurally-valid one.
+    // Order: (1) FinalVerdict precedence, (2) mandatory RED structure
+    // (defensive re-check — Stage 3/qualification should already have
+    // excluded these), (3) psychology score (chief ranking authority among
+    // otherwise-equal candidates), (4) raw score/opportunityScore as the
+    // last-resort tiebreaker only.
     finalRanked.sort((a: any, b: any) => {
+      const verdictRankA = VERDICT_PRECEDENCE[a.finalDecision?.verdict as FinalVerdict] ?? 0;
+      const verdictRankB = VERDICT_PRECEDENCE[b.finalDecision?.verdict as FinalVerdict] ?? 0;
+      if (verdictRankA !== verdictRankB) return verdictRankB - verdictRankA;
+
+      const psychAObj = candidateDigitPsychology(a);
+      const psychBObj = candidateDigitPsychology(b);
+
+      const failedA = Boolean(psychAObj?.redSemantics?.mandatoryRedStructureFailed);
+      const failedB = Boolean(psychBObj?.redSemantics?.mandatoryRedStructureFailed);
+      if (failedA !== failedB) return failedA ? 1 : -1;
+
+      const psychA = psychAObj?.score ?? a.psychologyScore ?? null;
+      const psychB = psychBObj?.score ?? b.psychologyScore ?? null;
+      if (psychA !== null && psychB !== null && psychA !== psychB) {
+        return psychB - psychA;
+      }
+
       const scoreA = a.score ?? a.opportunityScore ?? 0;
       const scoreB = b.score ?? b.opportunityScore ?? 0;
       return scoreB - scoreA;
