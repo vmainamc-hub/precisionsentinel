@@ -109,6 +109,21 @@ export interface EngineEvidenceInput {
   /** Tick or scan timestamp (ms epoch, or monotonic tick counter — must be strictly increasing per market). */
   timestamp: number;
 
+  // ── PHASE 15D — DETERMINISTIC SOURCE IDENTITY ────────────────────────
+  /**
+   * Identity of the DERIV SOURCE OBSERVATION this evidence was derived from.
+   * Built from the real Deriv tick (`epoch` seconds + quote) — never
+   * fabricated. Absent only when no source tick is available (e.g. a purely
+   * synthetic digit array in a test); the engine then falls back to
+   * timestamp + tick sequence and records the weaker identity.
+   */
+  sourceTickId?: string | null;
+  /** Number of source ticks observed for this market at analysis time. */
+  tickSequence?: number;
+  /** Analytical version the evidence was produced under. */
+  analysisVersion?: string;
+
+
   psychology: PsychologyEvidence;
   entryDigit: EntryDigitEvidence;
   pressure: PressureEvidence;
