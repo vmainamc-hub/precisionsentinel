@@ -137,39 +137,56 @@ export class ObservationEngine {
     accepted: number;
     duplicates: number;
     stale: number;
+    weakIdentity: number;
     lastIngestAt: number;
   } {
     return {
       accepted: this.acceptedCount,
       duplicates: this.duplicateCount,
       stale: this.staleCount,
+      weakIdentity: this.weakIdentityCount,
       lastIngestAt: this.lastIngestAt,
     };
   }
 
   /**
-   * Test/reset hook — rebuilds every cell from scratch and clears ingest
-   * bookkeeping, so isolated suites do not inherit observations from earlier
-   * runs. Not used by the live pipeline.
+   * PHASE 15D — DETERMINISTIC OBSERVATION IDENTITY.
+   *
+   * Timestamp alone is NOT a universal identity: two legitimate observations
+   * can share a millisecond depending on source precision, reconnect replay,
+   * or normalisation. The identity is therefore composed of the real source
+   * identifiers available in this pipeline:
+   *
+   *   marketId | proposition | sourceTickId (Deriv epoch@quote) | analysisVersion
+   *
+   * FALLBACK: when no Deriv source tick is available (synthetic digit arrays,
+   * tests, history-only bootstrap) there is no source identifier to use. The
+   * identity then falls back to `ts:<timestamp>#<tickSequence>` and the
+   * observation is counted in `weakIdentity`. Limitation: under the fallback,
+   * two genuinely distinct observations sharing both a timestamp and a tick
+   * count are indistinguishable and the second is treated as a duplicate.
    */
-  resetCells(): void {
-    this.cells.clear();
-    for (const id of ALL_CELL_IDS) {
-      const { marketId, proposition } = parseCellId(id);
-      this.cells.set(id, new ObservationCell(marketId, proposition));
-    }
-    this.bindCellTransitions();
-    this.qualificationManager.clear();
-    this.resetIngestGuards();
+  observationIdentity(input: EngineEvidenceInput): { key: string; weak: boolean } {
+    const version = input.analysisVersion ?? "unversioned";
+    const base = `${input.marketId}|${input.proposition}|v=${version}`;
+    if (input.sourceTickId) return { key: `${base}|tick=${input.sourceTickId}`, weak: false };
+    return {
+      key: `${base}|ts=${input.timestamp}#n=${input.tickSequence ?? 0}`,
+      weak: true,
+    };
   }
 
   /** Test/reset hook — clears exactly-once bookkeeping only. */
   resetIngestGuards(): void {
     this.lastAcceptedTs.clear();
+    this.acceptedIdentities.clear();
+    this.identityOrder.clear();
     this.acceptedCount = 0;
     this.duplicateCount = 0;
     this.staleCount = 0;
+    this.weakIdentityCount = 0;
   }
+
 
 
   getHealthStatus(): ObservationEngineHealthReport {
