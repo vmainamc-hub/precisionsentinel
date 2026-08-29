@@ -166,8 +166,15 @@ export interface MomentumEvidence {
   state: MomentumState;
   strength: number; // 0..1, as reported by the existing momentum engine
   winningSideMomentum?: WinningSideMomentum | null;
+  /**
+   * PHASE 13 — the authoritative directional momentum reading (winning-side,
+   * losing-side, relative, reversal, takeover). Same object that fed the
+   * authoritative danger composition for this cell.
+   */
+  directional?: DirectionalMomentum | null;
   raw?: any;
 }
+
 
 export interface TriggerEvidence {
   state: TriggerState;
