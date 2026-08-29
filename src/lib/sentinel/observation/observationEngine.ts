@@ -24,6 +24,9 @@ import { interpretMomentum } from "./momentumLayer";
 import type { ObservationPersistenceAdapter } from "./persistence";
 import { SupabasePersistenceAdapter } from "./supabasePersistence";
 
+/** PHASE 15D — bounded per-cell identity memory (ticks retained per cell). */
+const IDENTITY_MEMORY_PER_CELL = 256;
+
 export interface OverviewEntry {
   dossier: ObservationDossier;
   explanation: string;
