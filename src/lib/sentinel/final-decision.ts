@@ -28,6 +28,40 @@ import { PortfolioExposureEngine } from "../risk/portfolio-exposure";
 import { CircuitBreakerEngine } from "../risk/circuit-breaker";
 
 /**
+ * Verdict precedence for the final hierarchical ranking sort. CLEARED must
+ * always rank above every HELD_* variant, which must always rank above
+ * WAIT/BLOCKED — independent of any candidate's score. Higher number wins.
+ */
+const VERDICT_PRECEDENCE: Record<FinalVerdict, number> = {
+  CLEARED: 3,
+  HELD_UNCONFIRMED_SIGNIFICANCE: 2,
+  HELD_EXPOSURE_CAP: 2,
+  HELD_CIRCUIT_BREAKER: 2,
+  WAIT: 1,
+  BLOCKED: 0,
+};
+
+/**
+ * Resolves the digit-psychology record for a Stage 4 candidate. The Stage 4
+ * candidate is generic (`T`) — it can be an ObservationDossier-shaped object
+ * (`psychology.raw.digitPsychology`), an OpportunityCandidate
+ * (`digitPsychology`), or a RankedOpportunity that carries the observation
+ * dossier alongside it. All known shapes are probed here so the hierarchical
+ * comparator below reads the same authority in every case.
+ */
+function candidateDigitPsychology(c: any): any | null {
+  return (
+    c?.psychology?.raw?.digitPsychology ??
+    c?.digitPsychology ??
+    c?.dossier?.psychology?.raw?.digitPsychology ??
+    c?.observation?.psychology?.raw?.digitPsychology ??
+    c?.intel?.digitPsychology ??
+    null
+  );
+}
+
+
+/**
  * Computes standard normal cumulative distribution approximation.
  */
 function normalCdf(z: number): number {
