@@ -114,29 +114,29 @@ describe("Apex & Sentinel Initialization & Rendering smoke test", () => {
     // 3. Assert rankOpportunities matches getAllRanked cell-for-cell in score,
     //    identity and blocked state. Stage 4 now applies a HIERARCHICAL final
     //    ordering (verdict precedence -> mandatory RED structure -> psychology
-    //    -> raw score), so the apex list is compared on its score-ordered
-    //    projection; every other parity assertion is unchanged and still exact.
+    //    -> raw score), so the two lists may differ in position; parity is
+    //    asserted per cell (same universe, same score, same blocked state) and
+    //    the score multiset is still required to match exactly.
     const allRanked = observationEngine.getAllRanked();
     expect(allRanked.length).toBeGreaterThan(0);
 
-    const { ranked: stage4Ranked } = rankOpportunities(intels, {
-      ...DEFAULT_SCAN_OPTIONS,
-      minTicks: 10,
-    });
-    expect(stage4Ranked.length).toBe(allRanked.length);
-    const ranked = [...stage4Ranked].sort((a, b) => b.score - a.score);
+    const { ranked } = rankOpportunities(intels, { ...DEFAULT_SCAN_OPTIONS, minTicks: 10 });
+    expect(ranked.length).toBe(allRanked.length);
 
-    for (let i = 0; i < ranked.length; i++) {
-      const r = ranked[i];
-      const d = allRanked[i];
-      expect(r.symbol).toBe(d.marketId);
-      expect(r.contract.id).toBe(d.proposition);
-      expect(r.score).toBe(d.score);
+    const byCell = new Map(ranked.map((r) => [`${r.symbol}:${r.contract.id}`, r]));
+    for (const d of allRanked) {
+      const r = byCell.get(`${d.marketId}:${d.proposition}`);
+      expect(r).toBeDefined();
+      expect(r!.score).toBe(d.score);
       const isBlocked = Boolean(
         d.veto?.hard || d.danger?.isHardBlocked || (d.veto?.active && d.veto?.hard),
       );
-      expect(r.blocked).toBe(isBlocked);
+      expect(r!.blocked).toBe(isBlocked);
     }
+
+    expect([...ranked].map((r) => r.score).sort((a, b) => b - a)).toEqual(
+      allRanked.map((d) => d.score).sort((a, b) => b - a),
+    );
 
     // 4. Verify hard-vetoed cells are pushed to the bottom
     let seenBlocked = false;
