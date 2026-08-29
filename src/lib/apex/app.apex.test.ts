@@ -111,12 +111,20 @@ describe("Apex & Sentinel Initialization & Rendering smoke test", () => {
       expect(dossier.factors!.length).toBeGreaterThan(0);
     }
 
-    // 3. Assert rankOpportunities matches getAllRanked verbatim in order, score, and blocked
+    // 3. Assert rankOpportunities matches getAllRanked cell-for-cell in score,
+    //    identity and blocked state. Stage 4 now applies a HIERARCHICAL final
+    //    ordering (verdict precedence -> mandatory RED structure -> psychology
+    //    -> raw score), so the apex list is compared on its score-ordered
+    //    projection; every other parity assertion is unchanged and still exact.
     const allRanked = observationEngine.getAllRanked();
     expect(allRanked.length).toBeGreaterThan(0);
 
-    const { ranked } = rankOpportunities(intels, { ...DEFAULT_SCAN_OPTIONS, minTicks: 10 });
-    expect(ranked.length).toBe(allRanked.length);
+    const { ranked: stage4Ranked } = rankOpportunities(intels, {
+      ...DEFAULT_SCAN_OPTIONS,
+      minTicks: 10,
+    });
+    expect(stage4Ranked.length).toBe(allRanked.length);
+    const ranked = [...stage4Ranked].sort((a, b) => b.score - a.score);
 
     for (let i = 0; i < ranked.length; i++) {
       const r = ranked[i];
