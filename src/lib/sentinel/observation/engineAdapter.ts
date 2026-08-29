@@ -1029,8 +1029,13 @@ export function computeIntelObservationInputs(
         state: momentumState,
         strength: Math.min(1, Math.max(0, Math.abs(winPressure.ratePp) / 10)),
         winningSideMomentum: wsm,
-        raw: { spinePressure: winPressure, wsm },
+        // PHASE 13 — the authoritative directional momentum reading that also
+        // fed the danger composition above. Exposed so the observation layer,
+        // ranking and the UI all read the SAME momentum object.
+        directional: dirMomentum,
+        raw: { spinePressure: winPressure, wsm, directional: dirMomentum },
       },
+
       trigger: {
         state: triggerState,
         raw: { entryLabRec },
