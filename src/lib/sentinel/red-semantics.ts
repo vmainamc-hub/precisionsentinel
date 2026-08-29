@@ -236,16 +236,56 @@ export function classifyRedSemantics(
     ),
   );
 
+  // ── MANDATORY STRUCTURE — irreducible, non-compensable ────────────────
+  // RED on winning side, 2ND RED on winning side, winning side gaining.
+  // Computed independently of the scoring-penalty violations above so a
+  // high PsychologyScore elsewhere can never buy these back.
+  const redOnWinningSide = state.red === null ? null : winners.includes(state.red);
+  const secondRedOnWinningSide =
+    state.secondRed === null ? null : winners.includes(state.secondRed);
+
+  const winningSideDeltaPp = winners.reduce((sum, d) => sum + (state.deltaPp[d] ?? 0), 0);
+  const winningSideGainingPercentage = winningSideDeltaPp > 0;
+
+  const mandatoryFailureReasons: string[] = [];
+  if (redOnWinningSide === false) {
+    mandatoryFailureReasons.push(
+      `RED (digit ${state.red}) is on the losing side — mandatory RED structure requires RED on the winning side.`,
+    );
+  }
+  if (secondRedOnWinningSide === false) {
+    mandatoryFailureReasons.push(
+      `2ND RED (digit ${state.secondRed}) is on the losing side — mandatory RED structure requires 2ND RED on the winning side.`,
+    );
+  }
+  if (!winningSideGainingPercentage) {
+    mandatoryFailureReasons.push(
+      `Winning side is not gaining percentage (net ${winningSideDeltaPp >= 0 ? "+" : ""}${winningSideDeltaPp.toFixed(2)}pp across winning digits) — mandatory structure requires the winning side to be gaining.`,
+    );
+  }
+
+  const mandatoryRedStructureFailed =
+    redOnWinningSide === false ||
+    secondRedOnWinningSide === false ||
+    !winningSideGainingPercentage;
+
   return {
     fatal,
     fatalReason,
     violations,
     conflictSeverity,
     risingOnLosingSide,
+    redOnWinningSide,
+    secondRedOnWinningSide,
+    winningSideGainingPercentage,
+    mandatoryRedStructureFailed,
+    mandatoryFailureReasons,
     summary: fatal
       ? `RED SEMANTICS — FATAL: ${fatalReason}`
-      : conflicts.length === 0
-        ? "RED SEMANTICS — RED and 2ND RED are correctly placed (range, parity and winning-zone rules satisfied)."
-        : `RED SEMANTICS — STRUCTURAL CONFLICT (severity ${conflictSeverity}/100, ${conflicts.length} violation${conflicts.length === 1 ? "" : "s"}${risingOnLosingSide ? ", losing-side RED RISING" : ""}): ${conflicts.map((v) => v.note).join(" ")}`,
+      : mandatoryRedStructureFailed
+        ? `RED SEMANTICS — MANDATORY STRUCTURE FAILED (not qualifiable): ${mandatoryFailureReasons.join(" ")}`
+        : conflicts.length === 0
+          ? "RED SEMANTICS — RED and 2ND RED are correctly placed (range, parity and winning-zone rules satisfied)."
+          : `RED SEMANTICS — STRUCTURAL CONFLICT (severity ${conflictSeverity}/100, ${conflicts.length} violation${conflicts.length === 1 ? "" : "s"}${risingOnLosingSide ? ", losing-side RED RISING" : ""}): ${conflicts.map((v) => v.note).join(" ")}`,
   };
 }
