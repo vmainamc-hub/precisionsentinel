@@ -448,19 +448,48 @@ export class ObservationEngine {
     const cell = this.cells.get(id);
     if (!cell) throw new Error(`Unknown observation cell: ${id}`);
 
-    // ── Exactly-once ingestion guard ────────────────────────────────────
-    // ApexCore is the single authoritative producer. Any repeated or
-    // out-of-order observation for the same source identity is rejected
-    // deterministically instead of advancing Sentinel state twice.
+    // ── Exactly-once ingestion guard (PHASE 15D) ────────────────────────
+    // ApexCore is the single authoritative producer. Identity is deterministic
+    // (market + proposition + real Deriv source tick + analysis version), NOT
+    // timestamp-only: a replayed or re-mapped observation of the same source
+    // tick can never advance Sentinel state twice, and a genuinely new
+    // analysis version of the same tick is correctly accepted as distinct.
     const ts = input.timestamp || 0;
-    const seen = this.lastAcceptedTs.get(id);
-    if (seen !== undefined && ts <= seen) {
-      if (ts === seen) this.duplicateCount += 1;
-      else this.staleCount += 1;
+    const { key: identity, weak } = this.observationIdentity(input);
+
+    let seenIdentities = this.acceptedIdentities.get(id);
+    if (!seenIdentities) {
+      seenIdentities = new Set<string>();
+      this.acceptedIdentities.set(id, seenIdentities);
+      this.identityOrder.set(id, []);
+    }
+
+    if (seenIdentities.has(identity)) {
+      this.duplicateCount += 1;
       return cell.getDossier() ?? cell.ingest(input);
     }
-    this.lastAcceptedTs.set(id, ts);
+
+    // Ordering guard: a NEW identity carrying an older timestamp is a
+    // late/out-of-order delivery and must not rewind cell state.
+    const seenTs = this.lastAcceptedTs.get(id);
+    if (seenTs !== undefined && ts < seenTs) {
+      this.staleCount += 1;
+      return cell.getDossier() ?? cell.ingest(input);
+    }
+
+    seenIdentities.add(identity);
+    const order = this.identityOrder.get(id)!;
+    order.push(identity);
+    // Bounded memory: retain only the most recent identities per cell.
+    if (order.length > IDENTITY_MEMORY_PER_CELL) {
+      const evicted = order.splice(0, order.length - IDENTITY_MEMORY_PER_CELL);
+      for (const k of evicted) seenIdentities.delete(k);
+    }
+
+    this.lastAcceptedTs.set(id, Math.max(ts, seenTs ?? ts));
     this.acceptedCount += 1;
+    if (weak) this.weakIdentityCount += 1;
+
 
     this.lastIngestAt = ts || Date.now();
     if (this.errorsCount > 0) {
