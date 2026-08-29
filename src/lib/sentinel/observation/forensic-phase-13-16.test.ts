@@ -15,12 +15,12 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { observationEngine } from "./observationEngine";
 import { emptyEvidenceInput } from "./engineAdapter";
-import { ANALYSIS_VERSION } from "./constants";
+import { ANALYSIS_VERSION, MARKET_IDS } from "./constants";
 import { globalScan } from "@/lib/precision-edge-v2/global-scanner";
 import { assessCrossMarketDanger } from "@/lib/precision-edge-v2/cross-market-danger";
 
-const MARKET = "R_100" as const;
-const PROP = "OVER_2" as const;
+const MARKET = MARKET_IDS[0]!;
+const PROP = "OVER2" as const;
 
 describe("PHASE 15D — deterministic Sentinel observation identity", () => {
   beforeEach(() => {

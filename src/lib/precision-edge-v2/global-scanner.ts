@@ -254,7 +254,7 @@ export function globalScan(
   // manipulated, fluctuating in lockstep, or crowding at once. That is a
   // global condition, so it vetoes publication globally.
   const crossMarketDanger = assessCrossMarketDanger(markets);
-  const dangerBlocked = crossMarketDanger.blockPublication && candidates.length > 0;
+  const dangerBlocked = crossMarketDanger.blockPublication;
   const rejectedForCrossMarketDanger = dangerBlocked ? candidates.length : 0;
 
   const best = dangerBlocked ? null : (candidates[0] ?? null);
