@@ -2,7 +2,11 @@ import type { CellId, MarketId, Proposition } from "./constants";
 import type { CalibrationResult } from "@/lib/sentinel/calibration";
 import type { SequentialTestReport } from "@/lib/sentinel/sequential-test";
 import type { ComboEvidence } from "@/lib/sentinel/combination-learning";
-import type { WinningSideMomentum } from "@/lib/sentinel/winning-side-momentum";
+import type {
+  WinningSideMomentum,
+  DirectionalMomentum,
+} from "@/lib/sentinel/winning-side-momentum";
+
 
 // ---------------------------------------------------------------------------
 // §8.1 — Observation states
