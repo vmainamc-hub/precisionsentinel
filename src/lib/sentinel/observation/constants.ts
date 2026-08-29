@@ -112,3 +112,13 @@ export const THRESHOLDS = {
   DECAY_TICKS: 30,
   EXPIRE_TICKS: 90,
 } as const;
+
+/**
+ * PHASE 15D — ANALYSIS VERSION.
+ *
+ * Part of the deterministic Sentinel observation identity. Bump this whenever
+ * the analytical meaning of an evidence payload changes, so a re-analysis of
+ * the SAME source tick under new mathematics is treated as a legitimately
+ * distinct observation rather than a duplicate.
+ */
+export const ANALYSIS_VERSION = "phase-13-16.1";
