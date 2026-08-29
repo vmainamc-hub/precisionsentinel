@@ -21,6 +21,7 @@ import { describe, expect, it } from "vitest";
 import { ObservationLayerEngine } from "./observation-layer";
 import { ContractType, OpportunityCandidate } from "../../types/sentinel";
 import { isCandidateBestSetup } from "../../hooks/useStrongSignalLock";
+import { FinalDecisionEngine } from "./final-decision";
 
 function createTestCandidate(
   market: string,
@@ -558,5 +559,41 @@ describe("Apex Sentinel — Final Selectivity & Best-Setup Gate Mandatory Test S
     expect(obs?.currentStage).not.toBe("RIPE");
     expect(obs?.qualityBand).not.toBe("OPPORTUNITY");
     expect(obs?.qualityBand).not.toBe("BEST_SETUP");
+  });
+
+  // Test 13: Hierarchical Stage 4 ranking — a structurally-failed candidate can
+  // never outrank a structurally-clean one, no matter how large the score gap.
+  it("13. mandatory RED structure outranks raw score in Stage 4 final ranking", () => {
+    const circuitBreaker = {
+      tripped: false,
+      reason: null,
+      consecutiveLosses: 0,
+      sessionDrawdownPct: 0,
+      sustainedGlobalDanger: 0,
+      cooldownUntil: null,
+    } as any;
+
+    const failedHighScore = createTestCandidate("R_10", "UNDER_7", 96, 15, 3, {
+      digitPsychology: {
+        score: 96,
+        redSemantics: { mandatoryRedStructureFailed: true, mandatoryFailureReasons: ["RED losing side"] },
+      } as any,
+    });
+    const cleanLowScore = createTestCandidate("R_25", "UNDER_7", 71, 15, 3, {
+      digitPsychology: {
+        score: 71,
+        redSemantics: { mandatoryRedStructureFailed: false, mandatoryFailureReasons: [] },
+      } as any,
+    });
+
+    const { ranked } = FinalDecisionEngine.evaluateStage4(
+      [failedHighScore, cleanLowScore],
+      circuitBreaker,
+      [],
+    );
+
+    const failedIdx = ranked.findIndex((r: any) => r.market === "R_10");
+    const cleanIdx = ranked.findIndex((r: any) => r.market === "R_25");
+    expect(cleanIdx).toBeLessThan(failedIdx);
   });
 });
