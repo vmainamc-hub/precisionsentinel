@@ -418,33 +418,41 @@ export function computeIntelObservationInputs(
     const sim = simulatorAdjustment(intel.symbol, c.id, c.theoretical);
     const recentPerf = apexSimulator.recentPerformance(intel.symbol, c.id, c.theoretical);
 
-    // 5. Canonical Danger Composition (§6)
-    // Single canonical evaluation of danger across the cycle, reused by entry-point,
-    // observation evidence, and veto resolution.
-    const dangerComposition =
-      c.dangerComposition ??
-      composeDanger({
-        intel,
-        contract: {
-          label: c.label,
-          side,
-          barrier: c.barrier,
-          winners,
-          losers,
-        },
-        lifetimeTicks: intel.ticks ?? 1000,
-        recentLatencyMs: intel.latencyMs,
-        losingSideHostile: lsp.state === "HOSTILE",
-        losingSidePressure: lsp,
-        pressure: { winPressure, losePressure, pressureField, byWindow: pressureByWindow },
-        psychology: { structure, digitPsychology },
-        entryPoint: null,
-        simulation: { sim, recentPerf },
-        regime: { regime: intel.regime, regimeReport },
-        specialRisk: c.specialRisk,
-        buildup: intel.buildup,
-        timeframeConflict: Object.values(pressureByWindow).some((w) => w === "OPPOSING"),
-      });
+    // 5. AUTHORITATIVE DANGER COMPOSITION (§6, Phase 15B)
+    // This is the ONE authoritative danger value for this cell. ApexCore no
+    // longer composes a second, weaker danger object; it reads this one back
+    // (see apex/core.ts). Momentum (Phase 13), percentage competition
+    // (Phase 14), RED/2ND RED semantics (Phase 15A) and the upstream contract
+    // risk scalar (exposure/threat/special digits) all flow in here so no
+    // consumer can see a different number.
+    const dirMomentum = directionalMomentum(paField, winners, losers);
+    const dangerComposition = composeDanger({
+      intel,
+      contract: {
+        label: c.label,
+        side,
+        barrier: c.barrier,
+        winners,
+        losers,
+      },
+      lifetimeTicks: intel.ticks ?? 1000,
+      recentLatencyMs: intel.latencyMs,
+      losingSideHostile: lsp.state === "HOSTILE",
+      losingSidePressure: lsp,
+      pressure: { winPressure, losePressure, pressureField, byWindow: pressureByWindow },
+      psychology: { structure, digitPsychology },
+      entryPoint: null,
+      simulation: { sim, recentPerf },
+      regime: { regime: intel.regime, regimeReport },
+      specialRisk: c.specialRisk,
+      buildup: intel.buildup,
+      timeframeConflict: Object.values(pressureByWindow).some((w) => w === "OPPOSING"),
+      momentum: dirMomentum,
+      competition: paContract.competition,
+      redSemantics: digitPsychology.redSemantics,
+      contractRiskScalar: typeof c.danger === "number" ? c.danger : null,
+    });
+
 
     const entryRec = entryLab.recommend(intel.symbol, c.id, c.theoretical);
     const operatorLearning = operatorLearningLookup();
