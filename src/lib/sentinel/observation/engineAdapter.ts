@@ -995,6 +995,10 @@ export function computeIntelObservationInputs(
       marketId,
       proposition: prop,
       timestamp,
+      sourceTickId,
+      tickSequence: digits.length,
+      analysisVersion: ANALYSIS_VERSION,
+
       psychology: {
         direction: psychDirection,
         state: psychState,
