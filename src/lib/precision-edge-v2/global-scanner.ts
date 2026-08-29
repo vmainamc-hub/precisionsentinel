@@ -9,6 +9,7 @@
 // Returns the single strongest opportunity plus the runner-up ranking.
 import type { ContractVerdict, MarketReasoning } from "./types";
 import { readPsychology } from "./psychology-of-numbers";
+import { assessCrossMarketDanger, type CrossMarketDanger } from "./cross-market-danger";
 
 export interface GlobalCandidate {
   market: string;
@@ -41,6 +42,16 @@ export interface GlobalScanResult {
   rejectedForPersistence: number;
   scannedMarkets: number;
   scannedAt: number;
+  /**
+   * §54 CROSS-MARKET DANGER (PHASE 15E).
+   * Simultaneous manipulation spikes, correlated fluctuation and crowding
+   * cascades assessed across every scanned market. When
+   * `crossMarketDanger.blockPublication` is true the scanner publishes NO
+   * best opportunity, regardless of how strong a single market looks.
+   */
+  crossMarketDanger: CrossMarketDanger;
+  /** Count of candidates suppressed purely by the cross-market danger gate. */
+  rejectedForCrossMarketDanger: number;
   reason?: string; // populated when best is null
 }
 
@@ -237,13 +248,26 @@ export function globalScan(
   }
 
   candidates.sort((a, b) => b.score - a.score);
-  const best = candidates[0] ?? null;
-  const topThree = candidates.slice(0, 3);
+
+  // ── §54 CROSS-MARKET DANGER GATE (PHASE 15E) ──────────────────────────
+  // Per-market gates cannot see a market-wide event: several markets being
+  // manipulated, fluctuating in lockstep, or crowding at once. That is a
+  // global condition, so it vetoes publication globally.
+  const crossMarketDanger = assessCrossMarketDanger(markets);
+  const dangerBlocked = crossMarketDanger.blockPublication && candidates.length > 0;
+  const rejectedForCrossMarketDanger = dangerBlocked ? candidates.length : 0;
+
+  const best = dangerBlocked ? null : (candidates[0] ?? null);
+  const topThree = dangerBlocked ? [] : candidates.slice(0, 3);
 
   const gateVetoes = rejectedForEdge + rejectedForManipulation + rejectedForPersistence;
 
   let reason: string | undefined;
-  if (!best) {
+  if (dangerBlocked) {
+    reason = `Cross-market danger ${crossMarketDanger.level.toUpperCase()} (${Math.round(
+      crossMarketDanger.score,
+    )}/100) — publication blocked: ${crossMarketDanger.reasons.join("; ")}.`;
+  } else if (!best) {
     if (
       rejectedForRedBars > 0 &&
       rejectedForReady === 0 &&
@@ -278,6 +302,8 @@ export function globalScan(
     rejectedForPersistence,
     scannedMarkets: markets.length,
     scannedAt,
+    crossMarketDanger,
+    rejectedForCrossMarketDanger,
     reason,
   };
 }
