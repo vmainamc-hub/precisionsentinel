@@ -77,8 +77,10 @@ import { sequentialTestFromEdge, type SequentialTestReport } from "@/lib/sentine
 import { comboLearning, type ComboEvidence } from "@/lib/sentinel/combination-learning";
 import {
   winningSideMomentum,
+  directionalMomentum,
   type WinningSideMomentum,
 } from "@/lib/sentinel/winning-side-momentum";
+
 import { computeSetup } from "@/lib/sentinel/setup";
 import { assessEntryClearance } from "@/lib/sentinel/entry-clearance";
 import {
