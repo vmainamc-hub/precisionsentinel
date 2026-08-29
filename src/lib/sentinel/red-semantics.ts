@@ -94,6 +94,31 @@ export interface RedSemantics {
   /** True when a losing-side RED / 2ND RED is actively gaining share. */
   risingOnLosingSide: boolean;
   summary: string;
+
+  // ─────────────────────────────────────────────────────────────────────
+  // MANDATORY STRUCTURE (non-compensable). Distinct from `conflictSeverity`
+  // above: conflictSeverity still feeds a compensable scoring penalty for
+  // out-of-range/parity conflicts. These three checks — RED on winning
+  // side, 2ND RED on winning side, winning side gaining — are the
+  // irreducible setup conditions. A cell that fails any of them must never
+  // qualify or reach Best-of-90, no matter how high its PsychologyScore or
+  // opportunityScore is otherwise. See qualification.ts for the gate that
+  // consumes this.
+  // ─────────────────────────────────────────────────────────────────────
+
+  /** RED sits on the winning side. Null when RED hasn't formed yet. */
+  redOnWinningSide: boolean | null;
+  /** 2ND RED sits on the winning side. Null when 2ND RED hasn't formed yet. */
+  secondRedOnWinningSide: boolean | null;
+  /** Sum of deltaPp across all winning digits is > 0 — the winning side is
+   *  actually gaining share right now, not just correctly positioned. */
+  winningSideGainingPercentage: boolean;
+  /** True iff redOnWinningSide === false, secondRedOnWinningSide === false,
+   *  or winningSideGainingPercentage === false. Non-compensable — set this,
+   *  never re-derive it from conflictSeverity or any score. */
+  mandatoryRedStructureFailed: boolean;
+  /** Human-readable reasons for mandatoryRedStructureFailed, for UI/explain. */
+  mandatoryFailureReasons: string[];
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
