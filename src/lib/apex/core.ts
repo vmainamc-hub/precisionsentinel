@@ -37,7 +37,6 @@ import { loadRefinement } from "./settings";
 import { engineHealth } from "./health";
 import { apexSimulator, engineAgreement, simulatorAdjustment } from "./simulator";
 import { entryLab } from "./entry-conditions";
-import { composeDanger } from "@/lib/sentinel/danger";
 import { observationEngine } from "@/lib/sentinel/observation";
 import { mapIntelToObservationInputs } from "@/lib/sentinel/observation/engineAdapter";
 import {
