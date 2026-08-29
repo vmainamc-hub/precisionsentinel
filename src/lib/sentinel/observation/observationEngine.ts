@@ -66,9 +66,15 @@ export class ObservationEngine {
   private lastError: string | null = null;
   /** Exactly-once ingestion bookkeeping (per cell source identity). */
   private lastAcceptedTs = new Map<CellId, number>();
+  /** PHASE 15D — recently accepted deterministic observation identities per cell. */
+  private acceptedIdentities = new Map<CellId, Set<string>>();
+  /** Insertion order per cell, so the identity memory stays strictly bounded. */
+  private identityOrder = new Map<CellId, string[]>();
   private acceptedCount = 0;
   private duplicateCount = 0;
   private staleCount = 0;
+  private weakIdentityCount = 0;
+
 
 
   constructor() {
