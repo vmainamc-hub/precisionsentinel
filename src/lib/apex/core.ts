@@ -614,19 +614,28 @@ class ApexCore {
       fluctuation,
     };
 
-    // Canonical Danger Composition (computed once per cycle by ApexCore §6)
-    for (const c of contracts) {
-      const sim = simulatorAdjustment(symbol, c.id, c.theoretical);
-      const recentPerf = apexSimulator.recentPerformance(symbol, c.id, c.theoretical);
-      c.dangerComposition = composeDanger({
-        intel: digitIntel,
-        contract: c,
-        lifetime: sim.perf,
-        recent: recentPerf,
-        specialRisk: c.specialRisk,
-        buildup,
-      });
+    // ── ONE AUTHORITATIVE DANGER VALUE (PHASE 15B) ────────────────────
+    // ApexCore previously composed a SECOND, weaker danger object here
+    // (intel-only inputs: no momentum, no competition, no RED semantics, no
+    // pressure windows), which the observation adapter then preferred over
+    // its own richer composition. That produced two competing danger values
+    // for the same cell.
+    //
+    // The authoritative composition now lives in ONE place — the observation
+    // adapter — and ApexCore reads it back. The adapter snapshot is memoised
+    // per market/tick identity, so the later ingestion below is a cache hit
+    // and the engines still run exactly once per market per cycle.
+    try {
+      const authoritative = mapIntelToObservationInputs(intel, digits);
+      const byProposition = new Map(authoritative.map((o) => [String(o.proposition), o]));
+      for (const c of contracts) {
+        const composition = byProposition.get(String(c.id))?.danger?.raw;
+        if (composition) c.dangerComposition = composition;
+      }
+    } catch (err) {
+      observationEngine.recordIngestError(err);
     }
+
 
     this.intel.set(symbol, intel);
 
