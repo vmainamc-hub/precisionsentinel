@@ -26,6 +26,8 @@
  */
 
 import type { MarketId, Proposition } from "./constants";
+import { ANALYSIS_VERSION } from "./constants";
+
 import type {
   PsychologyEvidence,
   EntryDigitEvidence,
