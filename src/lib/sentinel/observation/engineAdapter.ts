@@ -285,6 +285,16 @@ export function computeIntelObservationInputs(
   const marketId = intel.symbol as MarketId;
   const timestamp = intel.updatedAt ?? Date.now();
 
+  // PHASE 15D — deterministic source identity taken from the REAL last Deriv
+  // tick for this market (epoch ms + quote). No fabricated tick ids: when the
+  // bus has no tick (synthetic/test digit arrays) this stays null and the
+  // engine falls back to timestamp + tick sequence, which it records.
+  const busTicks = derivBus.getTicks(String(intel.symbol)) ?? [];
+  const lastTick = busTicks.length > 0 ? busTicks[busTicks.length - 1] : null;
+  const sourceTickId = lastTick ? `${lastTick.t}@${lastTick.price}` : null;
+
+
+
   const digits: readonly number[] =
     rawDigits && rawDigits.length >= 50
       ? rawDigits
