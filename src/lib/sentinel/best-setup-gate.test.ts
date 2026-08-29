@@ -573,13 +573,16 @@ describe("Apex Sentinel — Final Selectivity & Best-Setup Gate Mandatory Test S
       cooldownUntil: null,
     } as any;
 
-    const failedHighScore = createTestCandidate("R_10", "UNDER_7", 96, 15, 3, {
+    // Both candidates are deliberately given the SAME final verdict (neither
+    // clears Stage 3, so both are WAIT) to isolate the structural tiebreak
+    // from the verdict-precedence tier above it.
+    const failedHighScore = createTestCandidate("R_10", "UNDER_7", 96, 15, null, {
       digitPsychology: {
         score: 96,
         redSemantics: { mandatoryRedStructureFailed: true, mandatoryFailureReasons: ["RED losing side"] },
       } as any,
     });
-    const cleanLowScore = createTestCandidate("R_25", "UNDER_7", 71, 15, 3, {
+    const cleanLowScore = createTestCandidate("R_25", "UNDER_7", 71, 15, null, {
       digitPsychology: {
         score: 71,
         redSemantics: { mandatoryRedStructureFailed: false, mandatoryFailureReasons: [] },
@@ -592,8 +595,8 @@ describe("Apex Sentinel — Final Selectivity & Best-Setup Gate Mandatory Test S
       [],
     );
 
-    // eslint-disable-next-line no-console
-    console.log(ranked.map((r: any) => [r.market, r.finalDecision?.verdict, r.opportunityScore]));
+    const verdicts = new Set(ranked.map((r: any) => r.finalDecision?.verdict));
+    expect(verdicts.size).toBe(1);
     const failedIdx = ranked.findIndex((r: any) => r.market === "R_10");
     const cleanIdx = ranked.findIndex((r: any) => r.market === "R_25");
     expect(cleanIdx).toBeLessThan(failedIdx);
