@@ -592,6 +592,8 @@ describe("Apex Sentinel — Final Selectivity & Best-Setup Gate Mandatory Test S
       [],
     );
 
+    // eslint-disable-next-line no-console
+    console.log(ranked.map((r: any) => [r.market, r.finalDecision?.verdict, r.opportunityScore]));
     const failedIdx = ranked.findIndex((r: any) => r.market === "R_10");
     const cleanIdx = ranked.findIndex((r: any) => r.market === "R_25");
     expect(cleanIdx).toBeLessThan(failedIdx);
