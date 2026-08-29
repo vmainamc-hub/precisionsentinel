@@ -360,8 +360,32 @@ export class FinalDecisionEngine {
       };
     });
 
-    // Re-verify strict score sort descending
+    // Hierarchical final ranking — NOT a raw score sort. A generic score
+    // must never reorder candidates across verdicts, and must never let a
+    // structurally-failed candidate outrank a structurally-valid one.
+    // Order: (1) FinalVerdict precedence, (2) mandatory RED structure
+    // (defensive re-check — Stage 3/qualification should already have
+    // excluded these), (3) psychology score (chief ranking authority among
+    // otherwise-equal candidates), (4) raw score/opportunityScore as the
+    // last-resort tiebreaker only.
     finalRanked.sort((a: any, b: any) => {
+      const verdictRankA = VERDICT_PRECEDENCE[a.finalDecision?.verdict as FinalVerdict] ?? 0;
+      const verdictRankB = VERDICT_PRECEDENCE[b.finalDecision?.verdict as FinalVerdict] ?? 0;
+      if (verdictRankA !== verdictRankB) return verdictRankB - verdictRankA;
+
+      const psychAObj = candidateDigitPsychology(a);
+      const psychBObj = candidateDigitPsychology(b);
+
+      const failedA = Boolean(psychAObj?.redSemantics?.mandatoryRedStructureFailed);
+      const failedB = Boolean(psychBObj?.redSemantics?.mandatoryRedStructureFailed);
+      if (failedA !== failedB) return failedA ? 1 : -1;
+
+      const psychA = psychAObj?.score ?? a.psychologyScore ?? null;
+      const psychB = psychBObj?.score ?? b.psychologyScore ?? null;
+      if (psychA !== null && psychB !== null && psychA !== psychB) {
+        return psychB - psychA;
+      }
+
       const scoreA = a.score ?? a.opportunityScore ?? 0;
       const scoreB = b.score ?? b.opportunityScore ?? 0;
       return scoreB - scoreA;
