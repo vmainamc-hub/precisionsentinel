@@ -179,8 +179,25 @@ export class ObservationEngine {
     };
   }
 
+  /**
+   * Test/reset hook — rebuilds every cell from scratch and clears ingest
+   * bookkeeping, so isolated suites do not inherit observations from earlier
+   * runs. Not used by the live pipeline.
+   */
+  resetCells(): void {
+    this.cells.clear();
+    for (const id of ALL_CELL_IDS) {
+      const { marketId, proposition } = parseCellId(id);
+      this.cells.set(id, new ObservationCell(marketId, proposition));
+    }
+    this.bindCellTransitions();
+    this.qualificationManager.clear();
+    this.resetIngestGuards();
+  }
+
   /** Test/reset hook — clears exactly-once bookkeeping only. */
   resetIngestGuards(): void {
+
     this.lastAcceptedTs.clear();
     this.acceptedIdentities.clear();
     this.identityOrder.clear();
